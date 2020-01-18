@@ -1,0 +1,6 @@
+# -*- python -*-
+Import('env')
+
+pdf = env.Latex('modern_db.tex')
+env.Default(pdf)
+
