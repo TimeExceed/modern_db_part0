@@ -1,0 +1,19 @@
+# -*- python -*-
+import os.path as op
+Import('env')
+
+libs = ['#LuaStream/src/stream.lua', '#LuaMetapost/src/luamp.lua']
+libs = env.Install('$BUILD_DIR/figs/lib', libs)
+
+srcs = env.Glob('*.lua')
+pdfs = [env.luamp(x) for x in srcs]
+env.Depends(pdfs, libs)
+env.Depends(
+    ['$BUILD_DIR/figs/b_plus_tree_origin.pdf',
+     '$BUILD_DIR/figs/b_plus_tree_insert3.pdf'],
+    '$BUILD_DIR/figs/lib/b_plus_tree.lua')
+env.Depends(
+    ['$BUILD_DIR/figs/trie.pdf',
+     '$BUILD_DIR/figs/bkd.pdf',
+     '$BUILD_DIR/figs/skiplist.pdf'],
+    '$BUILD_DIR/figs/lib/skiplist_lib.lua')

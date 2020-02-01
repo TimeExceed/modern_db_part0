@@ -1,0 +1,6 @@
+[submodule "LuaMetapost"]
+	path = LuaMetapost
+	url = https://github.com/TimeExceed/LuaMetapost.git
+[submodule "LuaStream"]
+	path = LuaStream
+	url = https://github.com/TimeExceed/LuaStream.git

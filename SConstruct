@@ -1,4 +1,4 @@
-#!/bin/env python2.7
+#!/bin/env python3
 # -*- python -*-
 
 # The MIT License (MIT)
@@ -120,8 +120,14 @@ def cloneFile(rt, fn):
     d = op.join(env['BUILD_DIR'].path, rt)
     if not op.exists(d):
         os.makedirs(d)
-    os.symlink(op.abspath(op.join(rt, fn)), op.join(d, fn))
-    
+    src = op.abspath(op.join(rt, fn))
+    dst = op.join(d, fn)
+    try:
+        os.symlink(src, dst)
+    except:
+        print(src, '->', dst)
+        raise
+
 def cloneWorkSpace():
     buildDir = firstDirname(env['BUILD_DIR'].path)
     paths = os.listdir('.')
@@ -178,13 +184,13 @@ def jar(env, target, source, **kwargs):
     def _jar(target, source, env):
         assert len(target) == 1
         dstJar = env.File(target[0])
-        
+
         srcs = env.Flatten([source])
         for x in srcs:
             assert x.exists()
 
         workdir = env.newTmpDir('jar').path
-        
+
         cloneInto(workdir, srcs)
         manifest = writeManifest(workdir, kwargs)
 
@@ -254,7 +260,7 @@ def javac(env, target, source, **kwargs):
     for rt, _, files in os.walk(source.abspath):
         for f in files:
             env.Depends(target, env.File(op.join(rt, f)))
-    
+
 
 env.AddMethod(javac)
 
@@ -293,7 +299,7 @@ flags = {
     'CFLAGS': ['--std=c11'],
     'CXXFLAGS': ['--std=c++11'],
     'CCFLAGS': ['-Wall', '-Wfloat-equal',
-                '-g', '-gdwarf-4', 
+                '-g', '-gdwarf-4',
                 '-I%s' % env['HEADER_DIR'].path],
     'LINKFLAGS': ['-Wl,-E']}
 if mode == 'debug':
@@ -399,22 +405,63 @@ def calcAuxDigest(tex, pdfDir):
     else:
         return ''
 
-def runLuaLatex(tex, pdfDir):
-    sp.check_call(['lualatex', '-shell-escape', tex], cwd=pdfDir)
-    return calcAuxDigest(tex, pdfDir)
+def runLuaLatex(env, tex, pdf):
+    with open(tex) as fp:
+        content = fp.read()
+    for m in re.finditer('\\\\includegraphics.*?[{](.*?)[}]', content):
+        print(tex, 'depends on', m.group(1))
+        env.Depends(tex, m.group(1))
+
+    pdfDir = op.dirname(pdf)
+    aux = calcAuxDigest(tex, pdfDir)
+    while True:
+        sp.check_call(['lualatex', '-shell-escape', tex], cwd=pdfDir)
+        newAux = calcAuxDigest(tex, pdfDir)
+        if aux == newAux:
+            break
+        aux = newAux
 
 def latex(target, source, env):
     assert len(target) == len(source)
     for pdf, tex in zip(map(pathInFs, target), map(pathInFs, source)):
-        pdfDir = op.dirname(pdf)
-        aux = calcAuxDigest(tex, pdfDir)
-        while True:
-            newAux = runLuaLatex(tex, pdfDir)
-            if aux == newAux:
-                break
-            aux = newAux
+        runLuaLatex(env, tex, pdf)
 
 env.Append(BUILDERS={'Latex': Builder(action=latex, suffix='.pdf')})
+
+def beamer(target, source, env):
+    assert len(source) == 1
+    source = source[0].abspath
+    with open(source) as fp:
+        source = fp.read()
+
+    assert len(target) == 2
+    replacements = [
+        '\setbeameroption{show notes}',
+        '\setbeameroption{hide notes}',
+    ]
+    target_pdf = [x.abspath for x in target]
+    target_tex = [op.splitext(x)[0] + '.tex' for x in target_pdf]
+    for tex, rep in zip(target_tex, replacements):
+        with open(tex, 'w') as fp:
+            fp.write(source.replace('% $BEAMER_NOTES', rep))
+    for tex, pdf in zip(target_tex, target_pdf):
+        runLuaLatex(env, tex, pdf)
+
+def beamerEmitter(target, source, env):
+    assert len(target) == 1
+    tgt = op.splitext(target[0].abspath)[0]
+    target = [
+        env.File(tgt + '.notes.pdf'),
+        env.File(tgt + '.no_notes.pdf'),
+    ]
+    return target, source
+
+bld = Builder(
+    action = beamer,
+    suffix = '.pdf',
+    emitter = beamerEmitter,
+)
+env.Append(BUILDERS={'Beamer': bld})
 
 def luamp(env, source):
     if 'LUA' not in env:
@@ -434,7 +481,9 @@ def luamp(env, source):
 
     source = op.basename(env.File(source).path)
     root, _ = op.splitext(op.basename(source))
-    env.Command(root + '.pdf', source, build)
+    target = env.File(root + '.pdf')
+    env.Command(target, source, build)
+    return target
 
 env.AddMethod(luamp)
 
@@ -461,7 +510,7 @@ def dockerize(env, target, source, **kwargs):
 
         with open(target.path, 'w') as fp:
             fp.write(image)
-        
+
     env.Command(target, source, _dockerize)
     return target
 
@@ -510,7 +559,7 @@ def dialyzer(env, source):
     dials = [env._dialyzer(x) for x in env.Flatten(source)]
     env.Alias('DIALYZER', dials)
     return dials
-    
+
 env.AddMethod(dialyzer)
 
 # for packaging

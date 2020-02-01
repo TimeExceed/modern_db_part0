@@ -1,6 +1,5 @@
 # -*- python -*-
 Import('env')
 
-pdf = env.Latex('modern_db.tex')
-env.Default(pdf)
-
+pdfs = env.Beamer('modern_db.tex')
+env.Default(env.Install('$BUILD_DIR', pdfs))
