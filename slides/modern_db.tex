@@ -22,6 +22,20 @@
 \titlepage
 \end{frame}
 
+\begin{frame}
+  \frametitle{You may expect...}
+  \begin{center}
+    \includegraphics[width=\textwidth]{../figs/secret_kungfu.jpg}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{But this talk is really about...}
+  \begin{center}
+    \includegraphics[height=0.8\textheight]{../figs/kungfu_category.jpg}
+  \end{center}
+\end{frame}
+
 \section*{Outline}
 \frame{\tableofcontents}
 
@@ -149,7 +163,6 @@
   \begin{center}
     \includegraphics{../figs/oplog_in_practice.pdf}
   \end{center}
-  \only<1>{
   \begin{block}{Epoch}
     OpLog is splitted into multiple segments.
     Each is called an \emph{epoch}.
@@ -158,24 +171,6 @@
       \item TTL is simply removing outdated epoch files.
     \end{itemize}
   \end{block}
-  }
-  \only<2>{
-  \begin{block}<2>{Header \& Footer}
-    \begin{itemize}
-      \item The header contains
-        \begin{itemize}
-          \item A magic string
-          \item version of the epoch file
-          \item statistics, e.g., creation timestamp
-        \end{itemize}
-      \item The footer contains
-        \begin{itemize}
-          \item CRC of the entire file (except this CRC itself)
-          \item statistics, e.g., sealing timestamp
-        \end{itemize}
-    \end{itemize}
-  \end{block}
-  }
 \end{frame}
 
 \begin{frame}
@@ -256,12 +251,12 @@
   }
   \note[item]{
     Batch writes are even worse.
-    They cause ``shotgun writes", which are definitely unfriendly to any cache mechanism.
+    They cause ``shotgun writes", which are definitely unfriendly to any caching mechanism.
   }
   \note[item]{
     What about ``count''?
     It causes more writes.
-    So is ``offset''.
+    So does ``offset''.
   }
 \end{frame}
 
@@ -542,7 +537,7 @@
     \end{itemize}
   \end{block}
   \note[item]{
-    LevelDB deploys prefix encoding instread of trie tree.
+    LevelDB deploys prefix encoding instead of trie tree.
   }
 \end{frame}
 
@@ -634,7 +629,7 @@
   \note[item]{
     There are a lot of variants, e.g., R+ tree, R* tree, QR tree and KD tree.
     A key difference is, ``can bounding boxes overlap?''
-    And thus, they will perform significantly different on high dimensional data.
+    And thus, they will perform significantly different on highly dimensional data.
   }
 \end{frame}
 
@@ -656,7 +651,7 @@
       \item turns both latitude and longitude to numbers between [0, 1) (in binary);
       \item picks bits interleavingly.
     \end{enumerate}
-    When one looks one more bit, the area reduces halfly.
+    When one more bit is considered, the area decreases halfly.
     So, \emph{spatial questions can be translated to range queries with fixed prefix.}
   \end{block}
 \end{frame}

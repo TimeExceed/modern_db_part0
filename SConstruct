@@ -48,15 +48,6 @@ env.Decider('MD5')
 
 # helper functions
 
-def detectLua():
-    if op.exists('/usr/bin/lua5.3'):
-        return '/usr/bin/lua5.3'
-    elif op.exists('/usr/bin/lua5.2'):
-        return '/usr/bin/lua5.2'
-    else:
-        return None
-
-
 def newTmpDir(env, usr):
     ts = datetime.utcnow()
     ts = ts.strftime('%Y%m%dT%H%M%S.%f')
@@ -463,21 +454,29 @@ bld = Builder(
 )
 env.Append(BUILDERS={'Beamer': bld})
 
-def luamp(env, source):
-    if 'LUA' not in env:
-        LUA = detectLua()
-        if LUA:
-            env['LUA'] = LUA
-        else:
-            raise Exception("undetect lua interpreter")
+def fathom(env, source, **kws):
+    if 'PYTHONPATH' in kws:
+        pythonpath = env.Dir(kws['PYTHONPATH']).abspath
+    else:
+        pythonpath = None
 
     def build(target, source, env):
         base, source = op.split(source[0].path)
         source, _ = op.splitext(source)
-        with open(op.join(base, source + '.mp'), 'w') as fp:
-            sp.check_call([env['LUA'], source + '.lua'], stdout=fp, cwd=base)
-        sp.check_call(['/usr/bin/mptopdf', '--latex', source + '.mp'], cwd=base)
-        os.rename(op.join(base, source + '-0.pdf'), op.join(base, source + '.pdf'))
+        sysenv = os.environ.copy()
+        if pythonpath:
+            if 'PYTHONPATH' in sysenv:
+                sysenv['PYTHONPATH'] += ':' + pythonpath
+            else:
+                sysenv['PYTHONPATH'] = pythonpath
+        with open(op.join(base, source + '-0.tex'), 'w') as fp:
+            sp.check_call(
+                ['python3', '-B', source + '.py'],
+                stdout=fp,
+                cwd=base,
+                env=sysenv)
+        sp.check_call(['lualatex', source + '-0.tex'], cwd=base)
+        sp.check_call(['pdfcrop', '--hires', source + '-0.pdf', source + '.pdf'], cwd=base)
 
     source = op.basename(env.File(source).path)
     root, _ = op.splitext(op.basename(source))
@@ -485,7 +484,7 @@ def luamp(env, source):
     env.Command(target, source, build)
     return target
 
-env.AddMethod(luamp)
+env.AddMethod(fathom)
 
 # for docker
 
